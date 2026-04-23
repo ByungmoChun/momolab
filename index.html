@@ -1,0 +1,892 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WORKBENCH — MO</title>
+  <meta name="description" content="Things I've put online. Press 1–9 to open.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,200..800&family=JetBrains+Mono:wght@300;400;500;600&family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0B0A08;
+      --bg-raise: #131210;
+      --bg-card: #16140F;
+      --ink: #F4EFE5;
+      --ink-soft: #CFC6B4;
+      --muted: #7A7163;
+      --mute-er: #4A4438;
+      --accent: #C4FF3E;
+      --accent-soft: #A8DD2B;
+      --accent-dim: rgba(196, 255, 62, 0.15);
+      --line: rgba(244, 239, 229, 0.08);
+      --line-strong: rgba(244, 239, 229, 0.18);
+      --danger: #FF5A3C;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html, body {
+      background: var(--bg);
+      color: var(--ink);
+      font-family: 'Bricolage Grotesque', 'Noto Sans KR', system-ui, sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ━━━ Background layers ━━━ */
+    .grid-overlay {
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(var(--line) 1px, transparent 1px),
+        linear-gradient(90deg, var(--line) 1px, transparent 1px);
+      background-size: 80px 80px;
+      pointer-events: none;
+      z-index: 1;
+      opacity: 0.5;
+      mask-image: radial-gradient(ellipse at center, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.3) 60%, transparent 100%);
+      -webkit-mask-image: radial-gradient(ellipse at center, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.3) 60%, transparent 100%);
+    }
+
+    .grain {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      opacity: 0.06;
+      z-index: 2;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+      mix-blend-mode: overlay;
+    }
+
+    .cursor-glow {
+      position: fixed;
+      width: 700px;
+      height: 700px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(196, 255, 62, 0.055) 0%, rgba(196, 255, 62, 0.02) 30%, transparent 65%);
+      pointer-events: none;
+      transform: translate(-50%, -50%);
+      z-index: 3;
+      transition: opacity 0.4s ease;
+      will-change: transform, left, top;
+    }
+
+    /* ━━━ Container ━━━ */
+    .container {
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: 1.5rem 2.5rem 0;
+      position: relative;
+      z-index: 5;
+    }
+
+    /* ━━━ Top bar ━━━ */
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1rem 0;
+      border-bottom: 1px solid var(--line);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.72rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .topbar-left, .topbar-right {
+      display: flex;
+      align-items: center;
+      gap: 1.25rem;
+    }
+
+    .live-dot {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: var(--accent);
+    }
+    .live-dot::before {
+      content: '';
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 10px var(--accent);
+      animation: pulse 1.8s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.35; transform: scale(0.7); }
+    }
+
+    .topbar .sep {
+      color: var(--mute-er);
+    }
+
+    .topbar .chip {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.25rem 0.6rem;
+      border: 1px solid var(--line-strong);
+      border-radius: 2px;
+      font-size: 0.65rem;
+      color: var(--ink-soft);
+    }
+
+    /* ━━━ Hero ━━━ */
+    .hero {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 3rem;
+      padding: 5rem 0 4rem;
+      align-items: end;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .hero-title {
+      font-family: 'Bricolage Grotesque', sans-serif;
+      font-size: clamp(4.5rem, 13.5vw, 14rem);
+      font-weight: 700;
+      line-height: 0.82;
+      letter-spacing: -0.055em;
+      font-variation-settings: "opsz" 96, "wght" 700;
+      color: var(--ink);
+      position: relative;
+    }
+
+    .hero-title .dot {
+      display: inline-block;
+      width: 0.16em;
+      height: 0.16em;
+      background: var(--accent);
+      border-radius: 50%;
+      vertical-align: 0.08em;
+      margin-left: 0.05em;
+      animation: blink 2s ease-in-out infinite;
+    }
+
+    @keyframes blink {
+      0%, 45%, 100% { opacity: 1; }
+      50%, 95% { opacity: 0.15; }
+    }
+
+    .hero-sub {
+      font-family: 'Noto Sans KR', sans-serif;
+      font-size: 0.95rem;
+      line-height: 1.65;
+      color: var(--ink-soft);
+      max-width: 36ch;
+      margin-top: 2rem;
+      font-weight: 400;
+    }
+
+    .hero-sub .accent {
+      color: var(--accent);
+    }
+
+    .hero-meta {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--muted);
+      text-align: right;
+      line-height: 2;
+      min-width: 180px;
+    }
+
+    .hero-meta .big-num {
+      font-family: 'Bricolage Grotesque', sans-serif;
+      font-size: 3.5rem;
+      font-weight: 500;
+      color: var(--ink);
+      display: block;
+      line-height: 1;
+      margin-bottom: 0.5rem;
+      letter-spacing: -0.04em;
+    }
+
+    .hero-meta .label {
+      color: var(--muted);
+    }
+
+    /* ━━━ Section header ━━━ */
+    .section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      padding: 2.5rem 0 1.5rem;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      color: var(--ink);
+    }
+
+    .section-header .tag-label {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+
+    .section-header .tag-label::before {
+      content: '';
+      width: 10px;
+      height: 10px;
+      background: var(--accent);
+      display: inline-block;
+    }
+
+    .section-header .right {
+      color: var(--muted);
+    }
+
+    /* ━━━ Grid ━━━ */
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+
+    .card {
+      position: relative;
+      display: block;
+      background: var(--bg-card);
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      overflow: hidden;
+      text-decoration: none;
+      color: inherit;
+      transition: border-color 0.4s ease, transform 0.4s cubic-bezier(0.2, 0.8, 0.3, 1);
+      isolation: isolate;
+    }
+
+    .card.featured {
+      grid-column: span 2;
+    }
+
+    .card::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: 4px;
+      border: 1px solid transparent;
+      pointer-events: none;
+      transition: border-color 0.4s ease, box-shadow 0.4s ease;
+    }
+
+    .card:hover {
+      border-color: var(--line-strong);
+      transform: translateY(-2px);
+    }
+
+    .card:hover::after {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 1px var(--accent), 0 20px 60px -15px rgba(196, 255, 62, 0.2);
+    }
+
+    .card-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1rem 1.25rem;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.68rem;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--muted);
+      border-bottom: 1px solid var(--line);
+      background: rgba(244, 239, 229, 0.015);
+    }
+
+    .card-head .num { color: var(--accent); font-weight: 500; }
+    .card-head .status {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+    .card-head .status::before {
+      content: '';
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 6px var(--accent);
+    }
+
+    /* Preview frame */
+    .preview-wrapper {
+      position: relative;
+      width: 100%;
+      overflow: hidden;
+      background: #050504;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .card.featured .preview-wrapper {
+      padding-top: 45%;
+    }
+    .card:not(.featured) .preview-wrapper {
+      padding-top: 60%;
+    }
+
+    .preview-inner {
+      position: absolute;
+      inset: 0;
+      transform: scale(0.5);
+      transform-origin: 0 0;
+      width: 200%;
+      height: 200%;
+    }
+
+    .card.featured .preview-inner {
+      transform: scale(0.62);
+      width: 161.29%;
+      height: 161.29%;
+    }
+
+    .preview-inner iframe {
+      width: 100%;
+      height: 100%;
+      border: 0;
+      pointer-events: none;
+      background: var(--bg);
+    }
+
+    .preview-overlay {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(180deg,
+        rgba(11, 10, 8, 0) 0%,
+        rgba(11, 10, 8, 0) 55%,
+        rgba(11, 10, 8, 0.55) 100%);
+      pointer-events: none;
+      transition: opacity 0.4s ease;
+    }
+
+    .card:hover .preview-overlay {
+      opacity: 0.4;
+    }
+
+    .preview-loading {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.7rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--muted);
+      background: var(--bg-card);
+      transition: opacity 0.6s ease;
+      z-index: 1;
+    }
+
+    .preview-loading.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    /* Card body */
+    .card-body {
+      padding: 1.5rem 1.5rem 1.75rem;
+    }
+
+    .card.featured .card-body {
+      padding: 2rem 2rem 2.25rem;
+    }
+
+    .card-title {
+      font-family: 'Bricolage Grotesque', sans-serif;
+      font-size: clamp(1.65rem, 2.4vw, 2.2rem);
+      font-weight: 600;
+      line-height: 1.05;
+      letter-spacing: -0.03em;
+      margin-bottom: 0.6rem;
+      font-variation-settings: "opsz" 48;
+    }
+
+    .card.featured .card-title {
+      font-size: clamp(2.25rem, 3.6vw, 3.4rem);
+      margin-bottom: 0.75rem;
+    }
+
+    .card-desc {
+      font-family: 'Noto Sans KR', sans-serif;
+      font-size: 0.92rem;
+      line-height: 1.65;
+      color: var(--ink-soft);
+      max-width: 54ch;
+      margin-bottom: 1.25rem;
+      font-weight: 400;
+    }
+
+    .card.featured .card-desc {
+      font-size: 1rem;
+      max-width: 62ch;
+    }
+
+    .card-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-top: 1rem;
+      border-top: 1px solid var(--line);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
+
+    .tags {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .tag {
+      padding: 0.3rem 0.6rem;
+      border: 1px solid var(--line-strong);
+      color: var(--ink-soft);
+      border-radius: 2px;
+      font-size: 0.65rem;
+    }
+
+    .tag.primary {
+      background: var(--accent-dim);
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    .open-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.6rem;
+      color: var(--ink-soft);
+      transition: color 0.3s ease, gap 0.3s ease;
+      font-weight: 500;
+    }
+
+    .open-btn .arrow {
+      display: inline-block;
+      transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.3, 1);
+    }
+
+    .card:hover .open-btn {
+      color: var(--accent);
+      gap: 0.9rem;
+    }
+
+    .card:hover .open-btn .arrow {
+      transform: translateX(4px) translateY(-1px);
+    }
+
+    /* ━━━ Marquee ━━━ */
+    .marquee {
+      overflow: hidden;
+      border-top: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+      padding: 1.25rem 0;
+      margin: 3rem 0 0;
+      background: var(--bg-raise);
+      position: relative;
+      z-index: 5;
+    }
+
+    .marquee-track {
+      display: flex;
+      gap: 3rem;
+      animation: marquee 40s linear infinite;
+      white-space: nowrap;
+      font-family: 'Bricolage Grotesque', sans-serif;
+      font-size: 2.25rem;
+      font-weight: 300;
+      letter-spacing: -0.02em;
+      color: var(--ink);
+      font-variation-settings: "opsz" 48, "wght" 300;
+    }
+
+    .marquee-track span {
+      display: inline-flex;
+      align-items: center;
+      gap: 3rem;
+    }
+
+    .marquee-track .bullet {
+      color: var(--accent);
+      font-size: 1.25rem;
+      vertical-align: middle;
+    }
+
+    .marquee-track em {
+      font-style: italic;
+      color: var(--accent);
+      font-weight: 400;
+    }
+
+    @keyframes marquee {
+      from { transform: translateX(0); }
+      to { transform: translateX(-50%); }
+    }
+
+    .marquee:hover .marquee-track {
+      animation-play-state: paused;
+    }
+
+    /* ━━━ Footer ━━━ */
+    footer {
+      padding: 2.5rem 2.5rem 3rem;
+      max-width: 1440px;
+      margin: 0 auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      gap: 2rem;
+      flex-wrap: wrap;
+      position: relative;
+      z-index: 5;
+    }
+
+    .foot-brand {
+      font-family: 'Bricolage Grotesque', sans-serif;
+      font-size: 1.15rem;
+      font-weight: 400;
+      color: var(--muted);
+    }
+    .foot-brand strong {
+      color: var(--ink);
+      font-weight: 500;
+    }
+
+    .foot-meta {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.68rem;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--muted);
+      text-align: right;
+      line-height: 1.9;
+    }
+    .foot-meta .kbd {
+      display: inline-block;
+      padding: 1px 6px;
+      background: var(--bg-raise);
+      border: 1px solid var(--line-strong);
+      border-radius: 2px;
+      margin: 0 2px;
+      color: var(--ink);
+      font-size: 0.9em;
+    }
+
+    /* ━━━ Entry animations ━━━ */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(28px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateX(-24px); }
+      to { opacity: 1; transform: translateX(0); }
+    }
+
+    .topbar { animation: slideIn 0.7s cubic-bezier(0.2, 0.8, 0.3, 1) both; }
+    .hero { animation: fadeUp 1s cubic-bezier(0.2, 0.8, 0.3, 1) both 0.1s; }
+    .section-header { animation: fadeUp 0.8s cubic-bezier(0.2, 0.8, 0.3, 1) both 0.25s; }
+    .card { animation: fadeUp 0.9s cubic-bezier(0.2, 0.8, 0.3, 1) both; }
+    .card:nth-child(1) { animation-delay: 0.35s; }
+    .card:nth-child(2) { animation-delay: 0.45s; }
+    .card:nth-child(3) { animation-delay: 0.55s; }
+    .card:nth-child(4) { animation-delay: 0.65s; }
+    .card:nth-child(5) { animation-delay: 0.75s; }
+    .marquee { animation: fadeUp 0.8s cubic-bezier(0.2, 0.8, 0.3, 1) both 0.7s; }
+    footer { animation: fadeUp 0.8s cubic-bezier(0.2, 0.8, 0.3, 1) both 0.85s; }
+
+    /* ━━━ Responsive ━━━ */
+    @media (max-width: 1100px) {
+      .container { padding: 1rem 1.5rem 0; }
+      .grid { grid-template-columns: 1fr; }
+      .card.featured { grid-column: span 1; }
+      .hero { grid-template-columns: 1fr; gap: 1.5rem; align-items: start; padding: 3rem 0; }
+      .hero-meta { text-align: left; }
+      .hero-meta .big-num { font-size: 2.5rem; }
+      footer { padding: 2rem 1.5rem 2.5rem; }
+      .marquee-track { font-size: 1.5rem; gap: 2rem; }
+      .cursor-glow { display: none; }
+    }
+
+    @media (max-width: 520px) {
+      .container { padding: 1rem 1rem 0; }
+      .topbar { flex-wrap: wrap; gap: 0.5rem; font-size: 0.62rem; padding: 0.75rem 0; }
+      .topbar-left, .topbar-right { gap: 0.6rem; }
+      .topbar .sep { display: none; }
+      .card-body { padding: 1.25rem; }
+      .card.featured .card-body { padding: 1.25rem; }
+      .card-footer { flex-direction: column; align-items: flex-start; gap: 0.75rem; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="grid-overlay"></div>
+  <div class="grain"></div>
+  <div class="cursor-glow" id="cursor"></div>
+
+  <div class="container">
+    <!-- Top bar -->
+    <div class="topbar">
+      <div class="topbar-left">
+        <span class="live-dot">LIVE</span>
+        <span class="sep">/</span>
+        <span id="now">2026·--·-- · --:-- KST</span>
+      </div>
+      <div class="topbar-right">
+        <span class="chip">VOL.01</span>
+        <span class="sep">·</span>
+        <span>SEOUL · 37.5665 N</span>
+      </div>
+    </div>
+
+    <!-- Hero -->
+    <section class="hero">
+      <div class="hero-left">
+        <h1 class="hero-title">
+          WORK<br>BENCH<span class="dot"></span>
+        </h1>
+        <p class="hero-sub">
+          지금 <span class="accent">살아있는 것들</span>.<br>
+          매번 URL 외우기 귀찮아서 만든 공간.<br>
+          클릭하거나, <span class="accent">1–9</span> 숫자 키로 바로 열기.
+        </p>
+      </div>
+      <div class="hero-meta">
+        <span class="big-num" id="count-big">03</span>
+        <div class="label">Active · on deck</div>
+        <div style="margin-top: 1rem;">Updated <span id="today">—</span></div>
+        <div><span class="label">Status —</span> <span style="color: var(--accent)">NOMINAL</span></div>
+      </div>
+    </section>
+
+    <!-- Section header -->
+    <div class="section-header">
+      <span class="tag-label">Current Projects</span>
+      <span class="right" id="count-label">3 items / auto-sorted</span>
+    </div>
+
+    <!-- Grid -->
+    <section class="grid" id="grid"></section>
+  </div>
+
+  <!-- Marquee -->
+  <div class="marquee">
+    <div class="marquee-track" id="marquee">
+      <!-- Populated by JS -->
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer>
+    <div class="foot-brand">
+      <strong>MO·MO</strong> <span style="color: var(--mute-er);">/</span> workbench
+    </div>
+    <div class="foot-meta">
+      <div>PRESS <span class="kbd">1</span><span class="kbd">2</span><span class="kbd">3</span> TO OPEN</div>
+      <div>© 2026 · SEOUL · MMXXVI</div>
+    </div>
+  </footer>
+
+  <script>
+    // ═══════════════════════════════════════════════════════════════
+    //  ⚙️  CONFIG — 이 부분만 고치면 됩니다.
+    //
+    //  새 프로젝트를 추가할 때:
+    //    PROJECTS 배열에 객체 하나 추가하면 끝.
+    //    첫 번째 항목(featured: true)은 크게 표시됩니다.
+    // ═══════════════════════════════════════════════════════════════
+
+    const PROJECTS = [
+      {
+        title: "Playtoon Platform",
+        subtitle: "Consumer Web SB · v0.3",
+        url: "https://play-toon.vercel.app/",
+        desc: "플레이툰 유저 접점 웹의 전체 스토리보드. 홈·상세·뷰어·마이페이지·검색·로그인 전 구간 스펙, 인터랙티브 요소(IE) 분기 플로우, PT캐시/포인트 결제 시스템까지.",
+        tags: ["STORYBOARD", "SPEC", "IA"],
+        date: "2026.04",
+        featured: true
+      },
+      {
+        title: "Playtoon Layer Studio",
+        subtitle: "Browser-only MVP",
+        url: "https://playlayer.vercel.app/",
+        desc: "캐릭터 이미지를 레이어로 분해하고 립싱크 바이즘을 생성하는 브라우저 파이프라인. Auto Detect(툰 얼굴 특화) + Manual 지정.",
+        tags: ["TOOL", "LAB"],
+        date: "2026.04"
+      },
+      {
+        title: "Into the Wind",
+        subtitle: "Boreas Landing",
+        url: "https://landing-boreas.vercel.app/",
+        desc: "이중 앵커(소실점 → 착지점)로 캐릭터의 원근·크기를 한번에 조율하는 랜딩 페이지 에디터. 바람 애니메이션 프리셋.",
+        tags: ["LANDING", "EDITOR"],
+        date: "2026.03"
+      },
+      // 👇 여기에 계속 추가
+      // {
+      //   title: "New Thing",
+      //   subtitle: "Short descriptor",
+      //   url: "https://....vercel.app",
+      //   desc: "한 줄 설명",
+      //   tags: ["LAB"],
+      //   date: "2026.05"
+      // },
+    ];
+
+    // ═══════════════════════════════════════════════════════════════
+
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"']/g, c => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      }[c]));
+    }
+
+    function renderCard(p, i) {
+      const num = String(i + 1).padStart(2, '0');
+      const tagsHtml = (p.tags || []).map((t, ti) =>
+        `<span class="tag${ti === 0 ? ' primary' : ''}">${escapeHtml(t)}</span>`
+      ).join('');
+
+      return `
+        <a class="card ${p.featured ? 'featured' : ''}" href="${escapeHtml(p.url)}" target="_blank" rel="noopener" data-index="${i}">
+          <div class="card-head">
+            <span><span class="num">№ ${num}</span> &nbsp; ${escapeHtml(p.subtitle || '')}</span>
+            <span class="status">LIVE</span>
+          </div>
+          <div class="preview-wrapper">
+            <div class="preview-loading">LOADING PREVIEW…</div>
+            <div class="preview-inner">
+              <iframe src="${escapeHtml(p.url)}" loading="lazy" sandbox="allow-scripts allow-same-origin" title="${escapeHtml(p.title)} preview"></iframe>
+            </div>
+            <div class="preview-overlay"></div>
+          </div>
+          <div class="card-body">
+            <h2 class="card-title">${escapeHtml(p.title)}</h2>
+            ${p.desc ? `<p class="card-desc">${escapeHtml(p.desc)}</p>` : ''}
+            <div class="card-footer">
+              <div class="tags">${tagsHtml}${p.date ? `<span class="tag">${escapeHtml(p.date)}</span>` : ''}</div>
+              <div class="open-btn">
+                <span>OPEN</span>
+                <span class="arrow">→</span>
+              </div>
+            </div>
+          </div>
+        </a>
+      `;
+    }
+
+    function render() {
+      const grid = document.getElementById('grid');
+      grid.innerHTML = PROJECTS.map(renderCard).join('');
+
+      const count = PROJECTS.length;
+      document.getElementById('count-big').textContent = String(count).padStart(2, '0');
+      document.getElementById('count-label').textContent = `${count} item${count !== 1 ? 's' : ''} / auto-sorted`;
+
+      // Hide loading indicators once iframes load
+      document.querySelectorAll('.card').forEach(card => {
+        const loading = card.querySelector('.preview-loading');
+        const iframe = card.querySelector('iframe');
+        if (!iframe || !loading) return;
+        const hide = () => loading.classList.add('hidden');
+        iframe.addEventListener('load', hide);
+        // Fallback: hide after 5s regardless
+        setTimeout(hide, 5000);
+      });
+
+      renderMarquee();
+    }
+
+    function renderMarquee() {
+      const items = [
+        '<em>always making</em>',
+        '<span class="bullet">●</span>',
+        '항상 만들고 있음',
+        '<span class="bullet">●</span>',
+        `${PROJECTS.length} LIVE`,
+        '<span class="bullet">●</span>',
+        'SEOUL · KST',
+        '<span class="bullet">●</span>',
+        '<em>press 1–9 to open</em>',
+        '<span class="bullet">●</span>',
+        'MMXXVI',
+        '<span class="bullet">●</span>',
+      ];
+      const line = `<span>${items.join('&nbsp;&nbsp;')}</span>`;
+      // Duplicate for seamless loop
+      document.getElementById('marquee').innerHTML = line + line;
+    }
+
+    // Clock
+    function updateClock() {
+      const now = new Date();
+      const y = now.getFullYear();
+      const m = String(now.getMonth() + 1).padStart(2, '0');
+      const d = String(now.getDate()).padStart(2, '0');
+      const h = String(now.getHours()).padStart(2, '0');
+      const mn = String(now.getMinutes()).padStart(2, '0');
+      const s = String(now.getSeconds()).padStart(2, '0');
+      const el = document.getElementById('now');
+      if (el) el.textContent = `${y}·${m}·${d} · ${h}:${mn}:${s} KST`;
+      const today = document.getElementById('today');
+      if (today) today.textContent = `${y}.${m}.${d}`;
+    }
+
+    // Cursor glow
+    const cursor = document.getElementById('cursor');
+    let cursorX = window.innerWidth / 2, cursorY = window.innerHeight / 2;
+    let cursorTX = cursorX, cursorTY = cursorY;
+
+    document.addEventListener('mousemove', (e) => {
+      cursorTX = e.clientX;
+      cursorTY = e.clientY;
+    });
+
+    function animateCursor() {
+      cursorX += (cursorTX - cursorX) * 0.12;
+      cursorY += (cursorTY - cursorY) * 0.12;
+      if (cursor) {
+        cursor.style.left = cursorX + 'px';
+        cursor.style.top = cursorY + 'px';
+      }
+      requestAnimationFrame(animateCursor);
+    }
+
+    // Keyboard shortcuts
+    document.addEventListener('keydown', (e) => {
+      if (e.target.matches('input, textarea')) return;
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      const n = parseInt(e.key, 10);
+      if (n >= 1 && n <= 9 && PROJECTS[n - 1]) {
+        window.open(PROJECTS[n - 1].url, '_blank', 'noopener');
+      }
+    });
+
+    // Init
+    render();
+    updateClock();
+    setInterval(updateClock, 1000);
+    animateCursor();
+  </script>
+</body>
+</html>
